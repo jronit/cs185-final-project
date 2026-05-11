@@ -213,9 +213,9 @@ def _compute_group_advantages(
     # dividing by the group standard deviation when `divide_by_std=True`.
     # raise NotImplementedError("Implement _compute_group_advantages in the student starter.")
     rewards_grouped = rewards.view(-1, group_size)
-    group_mean = rewards_grouped - rewards_grouped.mean(dim=-1, keepdim=True)
+    advantages = rewards_grouped - rewards_grouped.mean(dim=-1, keepdim=True)
     if divide_by_std:
-        advantages /= eps + rewards_grouped.std(dim=-1, keepdim=True, unbiased=False)
+        advantages /= 1e-6 + rewards_grouped.std(dim=-1, keepdim=True, unbiased=False)
     return advantages.view(-1)
 
 

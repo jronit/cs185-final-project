@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import math
 from typing import Dict
 
 import torch
+from torch.nn.utils import clip_grad_norm_
 
+from llm_rl_final_proj.models.logprobs import approx_kl_from_logprobs, compute_per_token_logprobs, masked_mean
 from llm_rl_final_proj.rl.base import RLAlgorithm
-from llm_rl_final_proj.rollout.rollout_buffer import RolloutBatch
+from llm_rl_final_proj.rollout.rollout_buffer import RolloutBatch, iter_minibatches
 
 
-class DrGRPO(RLAlgorithm):
-    """DrGRPO removes the GRPO sequence-length normalization and std scaling."""
+class GRPO(RLAlgorithm):
+    """GRPO update with a PPO-style clipped surrogate over completion tokens."""
 
-    name = "dr_grpo"
+    name = "grpo"
 
     def update(
         self,
@@ -20,12 +23,17 @@ class DrGRPO(RLAlgorithm):
         rollout: RolloutBatch,
         grad_accum_steps: int = 1,
     ) -> Dict[str, float]:
-        del model, optimizer, rollout, grad_accum_steps
-        # finishedTODO(student): implement DrGRPO.
-        # Start from your GRPO implementation, then make the two intended changes:
-        #   1. use the DrGRPO advantage convention (configured in online/train_rm_grpo.py),
-        #   2. remove the per-sequence length normalization inside the surrogate.'
-                cfg = self.cfg
+        # finishedTODO(student): implement one GRPO training iteration.
+        # The intended structure is:
+        #   1. loop over PPO epochs,
+        #   2. iterate over rollout minibatches,
+        #   3. recompute token log-probabilities under the current policy,
+        #   4. form PPO ratios against mb.old_logprobs,
+        #   5. apply token-level clipping with the sequence-level GRPO averaging used in this codebase,
+        #   6. add KL regularization against mb.ref_logprobs,
+        #   7. handle gradient accumulation / clipping / optimizer steps,
+        #   8. return the logged metrics expected by the training script.
+        cfg = self.cfg
         model.train()
         model.config.use_cache = False
 
@@ -66,7 +74,8 @@ class DrGRPO(RLAlgorithm):
                 unclipped = ratio * adv_t
                 clipped = ratio.clamp(1.0 - cfg.clip_eps, 1.0 + cfg.clip_eps) * adv_t
                 per_token_obj = (torch.min(unclipped, clipped) * mask).sum(dim=-1)
-                pg_loss = -seq_obj.mean()
+                seq_len = mask.sum(dim=-1).clamp(min=1)
+                pg_loss = -(per_token_obj / seq_len).mean()
                 kl = approx_kl_from_logprobs(new_logp, mb.ref_logprobs, mask)
                 entropy = -masked_mean(new_logp, mask)
                 with torch.no_grad():

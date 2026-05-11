@@ -117,7 +117,7 @@ def compute_offline_preference_loss(
         rejected_rewards = policy_scores.rejected_logp_sum - reference_scores.rejected_logp_sum
         chosen_rewards_sorted, _ = torch.sort(chosen_rewards)
         rejected_rewards_sorted, _ = torch.sort(rejected_rewards)
-        quantile_gap = chosen_rewards_soroted - rejected_rewards_sorted
+        quantile_gap = chosen_rewards_sorted - rejected_rewards_sorted
         losses = -F.logsigmoid(beta * quantile_gap)
         metrics.update(
             {

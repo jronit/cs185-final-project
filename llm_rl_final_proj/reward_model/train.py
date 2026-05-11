@@ -162,7 +162,7 @@ def _compute_pair_metrics(chosen_scores: torch.Tensor, rejected_scores: torch.Te
     #   2. the mean negative log-sigmoid loss,
     #   3. summary metrics such as pair accuracy and mean margin.
     margins = chosen_scores - rejected_scores
-    loss = -F.logsigmoid(margins)
+    loss = -F.logsigmoid(margins).mean()
     return {
         "loss_tensor": loss,
         "reward_model/loss": float(loss.detach().item()),
