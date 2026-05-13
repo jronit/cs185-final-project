@@ -57,6 +57,7 @@ def parse_args() -> TrainConfig:
             "dpo",
             "ipo",
             "aot",
+            "dpo_conf",
         ],
     )
     ap.add_argument("--num_train_epochs", type=float, default=TrainConfig.num_train_epochs)
@@ -280,7 +281,7 @@ def main() -> None:
         step=0,
     )
 
-    need_reference = cfg.algo in {"dpo", "ipo", "aot"}
+    need_reference = cfg.algo in {"dpo", "ipo", "aot", "dpo_conf"}
 
     def run_eval(step: int, phase: str) -> Dict[str, float]:
         model.eval()
@@ -356,12 +357,17 @@ def main() -> None:
                 batch=batch,
                 need_reference=need_reference,
             )
+            if cfg.algo == "dpo_conf":
+                # Weight each pair by judge confidence × normalized preference strength.
+                example_weights = batch.avg_confidence * (batch.avg_preference_strength / 5.0)
+            else:
+                example_weights = None
             loss_out = compute_offline_preference_loss(
                 algo=cfg.algo,
                 beta=cfg.beta,
                 policy_scores=policy_scores,
                 reference_scores=reference_scores,
-                example_weights=None,
+                example_weights=example_weights,
             )
             (loss_out.loss / cfg.grad_accum_steps).backward()
             microbatch_count += 1

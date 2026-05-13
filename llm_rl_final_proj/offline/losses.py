@@ -127,6 +127,22 @@ def compute_offline_preference_loss(
                 "preference/aot_quantile_accuracy": float((quantile_gap.detach() > 0).float().mean().item()),
             }
         )
+    elif algo == "dpo_conf":
+        # Part 2: Confidence-weighted DPO. Same loss as DPO but example_weights are expected
+        # to be set by the caller (avg_confidence * avg_preference_strength / 5.0 from dataset).
+        # Pairs where the judge was more confident and the preference was stronger get higher weight.
+        if reference_scores is None:
+            raise ValueError("DPO_conf requires reference scores.")
+        ref_margin_sum = reference_scores.chosen_logp_sum - reference_scores.rejected_logp_sum
+        logits = beta * (policy_margin_sum - ref_margin_sum)
+        losses = -F.logsigmoid(logits)
+        metrics.update(
+            {
+                "preference/reference_margin_sum_mean": float(ref_margin_sum.detach().mean().item()),
+                "preference/reference_corrected_margin_mean": float(logits.detach().mean().item()),
+                "preference/reference_corrected_accuracy": float((logits.detach() > 0).float().mean().item()),
+            }
+        )
     else:
         raise ValueError(
             f"Unknown offline preference algo: {algo}. "
