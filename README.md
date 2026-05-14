@@ -1,5 +1,7 @@
 # CS 185/285 LLM RL Default Final Project
 
+ top-level reproduction commands file titled "REPRODUCTION.md"
+
 This repository contains the default LLM RL final project codebase.
 
 The project studies RLHF for open-ended instruction following with:
