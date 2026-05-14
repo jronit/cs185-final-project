@@ -1,6 +1,8 @@
 # CS 185/285 LLM RL Default Final Project
 
- top-level reproduction commands file titled "REPRODUCTION.md"
+See [REPRODUCTION.md](REPRODUCTION.md) for all reproduction commands.
+(a clearly visible top-level file or README section listing the exact commands needed to reproduce
+the runs you discuss in your report.)
 
 This repository contains the default LLM RL final project codebase.
 
